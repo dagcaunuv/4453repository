@@ -1,1 +1,34 @@
+name: Deploy to Azure
 
+on:
+  push:
+    branches:
+      - develop  # Bu, develop branch'ine yapılan push'lar için tetiklenecek.
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest  # GitHub Actions, Ubuntu üzerinde çalışacak.
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2  # Kodunuzu GitHub repository'nizden alır.
+
+      - name: Log in to Azure
+        uses: azure/login@v1  # Azure'a giriş yapar.
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}  # Azure kimlik bilgilerini GitHub secrets'tan alır.
+
+      - name: Build Docker Image
+        run: |
+          docker build -t <acr-name>.azurecr.io/myapp:latest .  # Docker imajını oluşturur.
+          echo ${{ secrets.REGISTRY_PASSWORD }} | docker login <acr-name>.azurecr.io -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin  # Azure Container Registry'ye giriş yapar.
+
+      - name: Push Docker Image to ACR
+        run: |
+          docker push <acr-name>.azurecr.io/myapp:latest  # Docker imajını ACR'ye gönderir.
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v2  # Azure App Service'a deployment yapar.
+        with:
+          app-name: <app-service-name>  # Azure App Service ismi.
+          images: <acr-name>.azurecr.io/myapp:latest  # Azure App Service'a hangi Docker imajını deploy edeceğimizi belirtir.
